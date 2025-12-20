@@ -1,39 +1,102 @@
-# CI/CD Is Not Only for the Cloud: Building CI/CD for Shared Hosting with GitHub Actions (Laravel)
+# CI/CD Is Not Only for the Cloud: Building a CI/CD Pipeline for Shared Hosting Using GitHub Actions
+
+![Laravel CI/CD with GitHub Actions](../images/laravel-ci-cd-github-actions-ssh-deployment-banner.png)
 
 ## Introduction: CI/CD Beyond Cloud Platforms
-Continuous Integration and Continuous Deployment (CI/CD) is often associated with cloud platforms like AWS, GCP, or Azure. However, CI/CD pipelines are **not exclusive to cloud infrastructure**. This guide demonstrates how to successfully implement a **CI/CD pipeline for shared hosting** using **GitHub Actions**, even with the limitations of traditional cPanel-based servers.
 
-This article is based on a **real-world deployment** on Namecheap shared hosting, highlighting challenges, fixes, and best practices.
+When people hear Continuous Integration and Continuous Deployment (CI/CD), they often think it’s something that only works on cloud platforms like AWS, Azure, or GCP. Kubernetes, EC2, containers and all that.
+
+But the truth is:
+
+CI/CD is not made for cloud alone.
+It is a workflow and it can work anywhere, including shared hosting.
+
+CI/CD pipelines are **not exclusive to cloud infrastructure**.
+In this article, I will walk you through how I built a real **CI/CD pipeline** for a Laravel application deployed on **shared hosting (Namecheap)** using **GitHub Actions** + **SSH** + **rsync**, even with the limitations of traditional cPanel servers.
+
+This guild is based on a **real-world deployment** on Namecheap shared hosting, highlighting challenges, fixes, and best practices.
+
+---
+
+## Why CI/CD on Shared Hosting?
+
+Shared hosting is still very common:
+
+- Personal projects
+- Small businesses
+- MVPs
+- Legacy systems
+Yet most CI/CD tutorials completely ignore it.
+
+### Common misconceptions
+
+- “You need Kubernetes”
+- “You need Docker”
+- “You need AWS, Azure or GCP”
+
+### Reality
+
+- If you have SSH access, you can do CI/CD
+- GitHub Actions works anywhere
+- Automation is about process, not infrastructure
+
+---
+
+## The Stack We Used
+
+- Laravel application
+- Shared hosting (Namecheap)
+- SSH access enabled
+- GitHub Actions
+- rsync for deployment
+
+- *No Docker.*
+- *No cloud VM.*
+- *No managed pipelines.*
+
+---
+
+## The Main Idea
+
+The idea is simple:
+
+- Push code to GitHub
+- GitHub Actions runs a workflow
+- The workflow connects to the server via SSH
+- Only changed files are synced to the server
+- The application files update automatically
 
 ---
 
 ## What We Are Building
+
 - CI/CD pipeline using **GitHub Actions**
 - Deployment to **shared hosting (Namecheap)**
-- Laravel application
+- Laravel application (You can deploy any application)
 - Secure deployment using **SSH**
-- Zero-downtime-friendly rsync deployment
+- Zero downtime friendly rsync deployment
 
 ---
 
 ## Why CI/CD on Shared Hosting Is Challenging
-Shared hosting environments are restrictive by design. Some of the difficulties we encountered include:
+
+Shared hosting environments are restrictive by design and functionality unlike cloud and VPSs where you have full control. Some of the difficulties we encountered include:
 
 ### 1. Limited Server Control
-- No root access
+
+- No root access and sudo
 - No system-wide package installation
 - Restricted SSH configuration
+- Cannot run npm for JavaScript packages
 
 ### 2. SSH Authentication Issues
+
 - SSH keys generated on server vs local machine
 - Incorrect key formats causing `libcrypto` errors
 - Permission errors (`Permission denied (publickey)`)
 
-### 3. File Permission & Ownership Problems
-- GitHub Actions deploy user vs hosting user
-- `.htaccess` not respected due to permission mismatch
+### 3. Risk of Accidental File Deletion
 
-### 4. Risk of Accidental File Deletion
 - Using `rsync --delete` without exclusions
 - Losing `.env` and storage files
 
@@ -42,20 +105,31 @@ Shared hosting environments are restrictive by design. Some of the difficulties 
 ## Step-by-Step: Setting Up CI/CD for Shared Hosting
 
 ### Step 1: Generate SSH Key on the Server
-Log into your shared hosting via SSH and run:
+
+The SSH is not enabled on Namecheap cPanel by default and you need to enable it to be able to follow this guild.
+
+From the cPanel, under **Exclusive for Namecheap Customers**, click on **Manage Shell** then you will enable the SSH as shown bellow:
+![How to enable ssh on Namecheap shared hosting](../images/how-to-enable-ssh-on-namecheap-shared-hosting.png)
+
+You can either access the server terminal from your local merchine using SSH or directly from cPanel **Terminal**.
+
+Log into your shared hosting CLI and run:
 
 ```bash
 ssh-keygen -t rsa -b 2048 -f ~/.ssh/github_actions_key
 ```
 
-- Do **not** set a passphrase
-- This creates:
+- Do **not** set a passphrase. GitHub actions will not work with passphrase/password.
+- The above bash command will create two files:
   - `github_actions_key` (private key)
   - `github_actions_key.pub` (public key)
+- The files will be stored in **.ssh** folder on cPanel:
 
+**Note:** You can generate the SSH keys from cPanel UI but it requires you add a password which will not work with GitHub actions
 ---
 
 ### Step 2: Add Public Key to Authorized Keys
+
 Append the public key:
 
 ```bash
@@ -64,30 +138,136 @@ chmod 600 ~/.ssh/authorized_keys
 chmod 700 ~/.ssh
 ```
 
+This will authorize the keys to be accessed from GitHub actions.
+
 ---
 
-### Step 3: Add Private Key to GitHub Secrets
+### Step 3: Add Private Key and other variables to GitHub Secrets
+
 In your GitHub repository:
 
 **Settings → Secrets and variables → Actions → New Repository Secret**
 
+![Adding variables and secrets on github repository secrets](../images/adding-variables-and-secrets-on-github-repository-secrets.png)
+
 | Name | Value |
 |----|------|
-| SSH_PRIVATE_KEY | *(contents of github_actions_key)* |
-| SSH_HOST | yourdomain.com |
+| APP_PATH | project_path |
+| SSH_HOST | yourdomain.com or server IP |
+| SSH_KEY | *(contents of github_actions_key)* |
+| SSH_PORT | custom_ssh_port(eg 21098) |
 | SSH_USER | hosting_username |
-| SSH_PORT | custom_ssh_port |
 
-✅ Use **Repository Secrets**, not Environment secrets.
+**Note:** Use **Repository Secrets**, not Environment secrets. Paste the **private key**, not the *.pub* file.
 
 ---
 
 ## GitHub Actions Workflow for Shared Hosting Deployment
 
-### Sample Workflow (`deploy.yml`)
+Normally, GitHub detects and presents suggested workflows automatically according to your codebase. In this sample, we will gowith *"set up a workflow yourself"* link.
+
+![Setting up github actions](../images/setting-up-github-actions.png)
+
+This is shown only when you have not created any workflow on the repository. If you have a workflow already, it will show the runworkflow runs and the button to create another workflow.
+
+### Sample Workflow steps explained
+
+Let us go through and explain the workflow steps accordingly.
+
+### Workflow Name & Trigger
 
 ```yaml
-name: Deploy to Shared Hosting
+name: Laravel CI/CD (Namecheap SSH)
+
+on:
+  push:
+    branches:
+      - main
+```
+
+This section defines the name of the workflow and when it should run.
+This block **on.push.branches.main** tells GitHub to automatically trigger this workflow whenever new code is pushed to the main branch.
+
+In a company setting where there are many repository branches, the workflow will not be triggered if there is push to any other branches than main. That way, it prevent unwanted changes from being deployed.
+
+### Job Definition & Runner
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+```
+
+This section defines a job named deploy and specifies the environment it runs in and **jobs** is the top-level key where all workflow jobs are declared
+
+### Checking Out the Repository
+
+```yaml
+steps:
+  - name: Checkout code
+    uses: actions/checkout@v4
+```
+
+This step pulls the latest version of your repository into the GitHub Actions runner and **steps** defines a sequence of actions executed within the job.
+
+### Setting Up PHP Environment
+
+```yaml
+- name: Setup PHP
+    uses: shivammathur/setup-php@v2
+    with:
+      php-version: "8.2"
+      extensions: mbstring, xml, curl, zip, bcmath
+      coverage: none
+```
+
+This step prepares the PHP runtime required to run the Laravel application. At this point, if you are creating a workflow for an application developed in another language, then this will be different.
+
+### Deploying Files to the Server (Rsync over SSH)
+
+```yaml
+- name: Upload project via rsync (SSH)
+    uses: burnett01/rsync-deployments@7.1.0
+    with:
+      switches: -az --exclude=".env" --exclude="storage/**" --exclude="bootstrap/cache/**" --exclude=".git" --exclude=".htaccess"
+      path: ./
+      remote_path: ${{ secrets.APP_PATH }}
+      remote_host: ${{ secrets.SSH_HOST }}
+      remote_user: ${{ secrets.SSH_USER }}
+      remote_key: ${{ secrets.SSH_KEY }}
+      remote_port: ${{ secrets.SSH_PORT }}
+```
+
+This step deploys the application to the server using rsync over SSH.
+**rsync** transfers only changed files **--exclude** prevents sensitive and environment files from being uploaded, files like .env, etc.
+
+**path** specifies the local project directory to sync while **remote_*...** values are pulled from GitHub Secrets.
+
+### Running Laravel Commands on the Server
+
+```yaml
+- name: Run Laravel commands on server
+    uses: appleboy/ssh-action@v1.0.3
+    with:
+      host: ${{ secrets.SSH_HOST }}
+      username: ${{ secrets.SSH_USER }}
+      key: ${{ secrets.SSH_KEY }}
+      port: ${{ secrets.SSH_PORT }}
+      script: |
+        cd ${{ secrets.APP_PATH }}
+        php artisan migrate --force
+        php artisan optimize:clear
+        php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
+```
+
+This step connects to the production server via SSH and executes essential Laravel maintenance commands. It finalizes the deployment by ensuring the application is up to date, optimized, and production ready after each release.
+
+### The full CI/CD workflow for shared hosting (`.github/workflows/main.yml`)
+
+```yaml
+name: Laravel CI/CD (Namecheap SSH)
 
 on:
   push:
@@ -102,55 +282,101 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, xml, curl, zip, bcmath
+          coverage: none
 
-      - name: Deploy via rsync
-        run: |
-          rsync -az             --exclude=".env"             --exclude="storage/**"             --exclude="bootstrap/cache/**"             --exclude=".git"             ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/username/project_path
+      - name: Upload project via rsync (SSH)
+        uses: burnett01/rsync-deployments@7.1.0
+        with:
+          switches: -az --exclude=".env" --exclude="storage/**" --exclude="bootstrap/cache/**" --exclude=".git" --exclude=".htaccess"
+          path: ./
+          remote_path: ${{ secrets.APP_PATH }}
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.SSH_KEY }}
+          remote_port: ${{ secrets.SSH_PORT }}
+
+      - name: Run Laravel commands on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ${{ secrets.APP_PATH }}
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
 ```
 
 ---
 
 ## Why rsync Is Ideal for Shared Hosting CI/CD
+
 - Transfers **only changed files**
 - Faster deployments
 - Lower server load
 - Avoids full folder replacement
 
 ### Does rsync delete everything?
-❌ No — unless you use `--delete`.
+
+No, unless you use `--delete`.
 
 If you use:
+
 ```bash
 rsync -az --delete
 ```
+
 Files **not present in the repo** will be removed on the server.
 
-✅ Recommended:
+**Recommended:**
+
 - Avoid `--delete` on shared hosting
-- Or use exclusions very carefully
+- And use exclusions very carefully
 
 ---
 
-## Fixing .htaccess Not Working After Deployment
+## Best Practices for CI/CD on Shared Hosting
 
-### Common Causes
-- Wrong file permissions
-- Apache not reading `.htaccess`
-- Directory listing enabled due to missing rewrite rules
+### Security
 
-### Recommended Permissions
-```bash
-chmod 644 .htaccess
-chmod 755 project_folder
-```
+- Never commit `.env`
+- Use SSH keys, not passwords
+- Test SSH manually first
+- Restrict SSH ports
+- Exclude sensitive files
+- Do not hard code variables and secrets, use **Repository Secrets**
+
+### Deployment
+
+- Deploy only changed files using **rsync**
+- Backup before major changes
+- Exclude runtime directories
+
+### Stability
+
+- Avoid `composer install` on shared hosting
+- Build locally or in CI when possible
+- Monitor file permissions after deploy
+
+---
+
+## Bonus
+
+## You may need .htaccess file for Laravel application
+
+When you host a Laravel application on shared hosting, by default, the file lists will show when someone visits your domain name. To prevent this and direct users to your application home page, use **.htaccess** file to set the rules.
 
 ### Correct Laravel Rewrite Rule
+
 ```apache
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -158,39 +384,25 @@ chmod 755 project_folder
 </IfModule>
 ```
 
----
-
-## Best Practices for CI/CD on Shared Hosting
-
-### ✅ Security
-- Never commit `.env`
-- Use SSH keys, not passwords
-- Restrict SSH ports
-
-### ✅ Deployment
-- Deploy only changed files
-- Backup before major changes
-- Exclude runtime directories
-
-### ✅ Stability
-- Avoid `composer install` on shared hosting
-- Build locally or in CI when possible
-- Monitor file permissions after deploy
+Use the rule above inside .htaccess file. It will direct trafic to the public folder of the Laravel application instead of listing the directory contents. The .htaccess file should be in the parent folder of the application.
 
 ---
 
 ## Key Takeaways
+
 - CI/CD is **not limited to cloud platforms**
 - Shared hosting can support CI/CD with proper setup
 - GitHub Actions + SSH + rsync is a powerful combo
 - Understanding hosting limitations is critical
+Shared hosting can absolutely support professional CI/CD workflows if you design them properly.
 
 ---
 
 ## Conclusion
-CI/CD pipelines are about **automation**, not infrastructure prestige. With the right approach, even shared hosting environments can benefit from modern DevOps workflows.
 
-If you're running Laravel on shared hosting, CI/CD is absolutely achievable — and worth it.
+CI/CD pipelines are about **automation**, not infrastructure based. With the right approach, even shared hosting environments can benefit from modern DevOps workflows.
+
+If you're running Laravel on shared hosting, CI/CD is absolutely achievable and it saves time of having to constantly update your server's files after each changes.
 
 ---
 
