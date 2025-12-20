@@ -4,7 +4,7 @@
 
 ## Introduction: CI/CD Beyond Cloud Platforms
 
-When people hear Continuous Integration and Continuous Deployment (CI/CD), they often think it’s something that only works on cloud platforms like AWS, Azure, or GCP. Kubernetes, EC2, containers and all that.
+When people hear Continuous Integration and Continuous Deployment (CI/CD), they often think it’s something that only works on cloud platforms like AWS, Azure, or GCP, Kubernetes, EC2, containers and all that.
 
 But the truth is:
 
@@ -20,12 +20,13 @@ This guild is based on a **real-world deployment** on Namecheap shared hosting, 
 
 ## Why CI/CD on Shared Hosting?
 
-Shared hosting is still very common:
+Shared hosting is still very common for:
 
 - Personal projects
 - Small businesses
 - MVPs
 - Legacy systems
+
 Yet most CI/CD tutorials completely ignore it.
 
 ### Common misconceptions
@@ -74,7 +75,7 @@ The idea is simple:
 - Deployment to **shared hosting (Namecheap)**
 - Laravel application (You can deploy any application)
 - Secure deployment using **SSH**
-- Zero downtime friendly rsync deployment
+- Zero downtime friendly using rsync for deployment
 
 ---
 
@@ -111,7 +112,7 @@ The SSH is not enabled on Namecheap cPanel by default and you need to enable it 
 From the cPanel, under **Exclusive for Namecheap Customers**, click on **Manage Shell** then you will enable the SSH as shown bellow:
 ![How to enable ssh on Namecheap shared hosting](../images/how-to-enable-ssh-on-namecheap-shared-hosting.png)
 
-You can either access the server terminal from your local merchine using SSH or directly from cPanel **Terminal**.
+You can either access the server terminal from your local machine using SSH or directly from cPanel **Terminal**.
 
 Log into your shared hosting CLI and run:
 
@@ -125,7 +126,10 @@ ssh-keygen -t rsa -b 2048 -f ~/.ssh/github_actions_key
   - `github_actions_key.pub` (public key)
 - The files will be stored in **.ssh** folder on cPanel:
 
-**Note:** You can generate the SSH keys from cPanel UI but it requires you add a password which will not work with GitHub actions
+**Note:** You can generate the SSH keys from cPanel UI but it requires you add a password which will not work with GitHub actions.
+
+To confirm that the key works, download the key to a folder on your local machine and try to SSH to your server from the same folder where the key is stored. If it does not require password, then GitHub action will have the permission to access your server.
+
 ---
 
 ### Step 2: Add Public Key to Authorized Keys
@@ -145,7 +149,6 @@ This will authorize the keys to be accessed from GitHub actions.
 ### Step 3: Add Private Key and other variables to GitHub Secrets
 
 In your GitHub repository:
-
 **Settings → Secrets and variables → Actions → New Repository Secret**
 
 ![Adding variables and secrets on github repository secrets](../images/adding-variables-and-secrets-on-github-repository-secrets.png)
@@ -162,13 +165,15 @@ In your GitHub repository:
 
 ---
 
-## GitHub Actions Workflow for Shared Hosting Deployment
+## Step 4: Create GitHub Actions Workflow for Shared Hosting Deployment
 
 Normally, GitHub detects and presents suggested workflows automatically according to your codebase. In this sample, we will gowith *"set up a workflow yourself"* link.
 
 ![Setting up github actions](../images/setting-up-github-actions.png)
 
-This is shown only when you have not created any workflow on the repository. If you have a workflow already, it will show the runworkflow runs and the button to create another workflow.
+This is shown only when you have not created any workflow on the repository. If you have a workflow already, it will show the workflow runs and the button to create another workflow.
+
+Clicking the link will create a file named ".github/workflows/main.yml" which will contain the YAML script of GitHub actions.
 
 ### Sample Workflow steps explained
 
@@ -239,7 +244,7 @@ This step prepares the PHP runtime required to run the Laravel application. At t
 ```
 
 This step deploys the application to the server using rsync over SSH.
-**rsync** transfers only changed files **--exclude** prevents sensitive and environment files from being uploaded, files like .env, etc.
+**rsync** transfers only changed files **--exclude** prevents sensitive and environment files from being deleted, files like .env, .htaccess, etc.
 
 **path** specifies the local project directory to sync while **remote_*...** values are pulled from GitHub Secrets.
 
@@ -325,7 +330,7 @@ jobs:
 - Lower server load
 - Avoids full folder replacement
 
-### Does rsync delete everything?
+### Does rsync delete everything on the server?
 
 No, unless you use `--delete`.
 
@@ -340,7 +345,7 @@ Files **not present in the repo** will be removed on the server.
 **Recommended:**
 
 - Avoid `--delete` on shared hosting
-- And use exclusions very carefully
+- And use exclusions (`--exclude`) very carefully
 
 ---
 
@@ -359,11 +364,10 @@ Files **not present in the repo** will be removed on the server.
 
 - Deploy only changed files using **rsync**
 - Backup before major changes
-- Exclude runtime directories
+- Exclude runtime directories and files
 
 ### Stability
 
-- Avoid `composer install` on shared hosting
 - Build locally or in CI when possible
 - Monitor file permissions after deploy
 
@@ -385,6 +389,10 @@ When you host a Laravel application on shared hosting, by default, the file list
 ```
 
 Use the rule above inside .htaccess file. It will direct trafic to the public folder of the Laravel application instead of listing the directory contents. The .htaccess file should be in the parent folder of the application.
+
+## Problem with npm
+
+If you are deploying an application that needs you to run `npm` command to bundle your app, it is advisable you run `npm run build` on your local machine and remove the build folder from `.gitignore` file so it can be pushed to GitHub and then be deployed to your server.
 
 ---
 
