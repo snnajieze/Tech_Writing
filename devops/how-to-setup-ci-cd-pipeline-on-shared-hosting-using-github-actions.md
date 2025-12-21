@@ -4,12 +4,11 @@
 
 ## Introduction: CI/CD Beyond Cloud Platforms
 
-When people hear Continuous Integration and Continuous Deployment (CI/CD), they often think it’s something that only works on cloud platforms like AWS, Azure, or GCP, Kubernetes, EC2, containers and all that.
+When people hear Continuous Integration and Continuous Deployment (CI/CD), they often think it’s something that only works on cloud platforms like AWS, Azure, or GCP, Kubernetes, EC2, containers, and all that.
 
 But the truth is:
 
-CI/CD is not made for cloud alone.
-It is a workflow and it can work anywhere, including shared hosting.
+CI/CD is not made for the cloud alone. It is a workflow, and it can work anywhere, including shared hosting.
 
 CI/CD pipelines are **not exclusive to cloud infrastructure**.
 In this article, I will walk you through how I built a real **CI/CD pipeline** for a Laravel application deployed on **shared hosting (Namecheap)** using **GitHub Actions** + **SSH** + **rsync**, even with the limitations of traditional cPanel servers.
@@ -31,9 +30,9 @@ Yet most CI/CD tutorials completely ignore it.
 
 ### Common misconceptions
 
-- “You need Kubernetes”
-- “You need Docker”
-- “You need AWS, Azure or GCP”
+- “You need Kubernetes.”
+- “You need Docker.”
+- “You need AWS, Azure, or GCP.”
 
 ### Reality
 
@@ -71,7 +70,7 @@ The idea is simple:
 
 ## What We Are Building
 
-- CI/CD pipeline using **GitHub Actions**
+- **CI/CD pipeline** using **GitHub Actions**
 - Deployment to **shared hosting (Namecheap)**
 - Laravel application (You can deploy any application)
 - Secure deployment using **SSH**
@@ -81,7 +80,7 @@ The idea is simple:
 
 ## Why CI/CD on Shared Hosting Is Challenging
 
-Shared hosting environments are restrictive by design and functionality unlike cloud and VPSs where you have full control. Some of the difficulties we encountered include:
+Shared hosting environments are restrictive by design and functionality, unlike cloud and VPSs, where you have full control. Some of the difficulties we encountered include:
 
 ### 1. Limited Server Control
 
@@ -92,8 +91,8 @@ Shared hosting environments are restrictive by design and functionality unlike c
 
 ### 2. SSH Authentication Issues
 
-- SSH keys generated on server vs local machine
-- Incorrect key formats causing `libcrypto` errors
+- SSH keys generated on the server vs local machine
+- Incorrect key formats are causing `libcrypto` errors
 - Permission errors (`Permission denied (publickey)`)
 
 ### 3. Risk of Accidental File Deletion
@@ -107,7 +106,7 @@ Shared hosting environments are restrictive by design and functionality unlike c
 
 ### Step 1: Generate SSH Key on the Server
 
-The SSH is not enabled on Namecheap cPanel by default and you need to enable it to be able to follow this guild.
+SSH is not enabled on Namecheap cPanel by default, and you need to enable it to be able to follow this guide.
 
 From the cPanel, under **Exclusive for Namecheap Customers**, click on **Manage Shell** then you will enable the SSH as shown bellow:
 ![How to enable ssh on Namecheap shared hosting](../images/how-to-enable-ssh-on-namecheap-shared-hosting.png)
@@ -117,18 +116,18 @@ You can either access the server terminal from your local machine using SSH or d
 Log into your shared hosting CLI and run:
 
 ```bash
-ssh-keygen -t rsa -b 2048 -f ~/.ssh/github_actions_key
+ssh-keygen -t ed25519 -f github_actions_key -N ""
 ```
 
 - Do **not** set a passphrase. GitHub actions will not work with passphrase/password.
 - The above bash command will create two files:
   - `github_actions_key` (private key)
   - `github_actions_key.pub` (public key)
-- The files will be stored in **.ssh** folder on cPanel:
+- The files will be stored in the **.ssh** folder on cPanel:
 
-**Note:** You can generate the SSH keys from cPanel UI but it requires you add a password which will not work with GitHub actions.
+**Note:** You can generate the SSH keys from cPanel UI, but it requires you add a password, which will not work with GitHub actions.
 
-To confirm that the key works, download the key to a folder on your local machine and try to SSH to your server from the same folder where the key is stored. If it does not require password, then GitHub action will have the permission to access your server.
+To confirm that the key works, download the key to a folder on your local machine and try to SSH to your server from the same folder where the key is stored. If it does not require a password, then the GitHub action will have the permission to access your server.
 
 ---
 
@@ -167,7 +166,7 @@ In your GitHub repository:
 
 ## Step 4: Create GitHub Actions Workflow for Shared Hosting Deployment
 
-Normally, GitHub detects and presents suggested workflows automatically according to your codebase. In this sample, we will gowith *"set up a workflow yourself"* link.
+Normally, GitHub detects and presents suggested workflows automatically according to your codebase. In this sample, we will go with the *"set up a workflow yourself"* link.
 
 ![Setting up github actions](../images/setting-up-github-actions.png)
 
@@ -193,7 +192,7 @@ on:
 This section defines the name of the workflow and when it should run.
 This block **on.push.branches.main** tells GitHub to automatically trigger this workflow whenever new code is pushed to the main branch.
 
-In a company setting where there are many repository branches, the workflow will not be triggered if there is push to any other branches than main. That way, it prevent unwanted changes from being deployed.
+In a company setting with many repository branches, the workflow will not be triggered if a push is made to any branch other than main. That way, it prevents unwanted changes from being deployed.
 
 ### Job Definition & Runner
 
@@ -203,7 +202,7 @@ jobs:
     runs-on: ubuntu-latest
 ```
 
-This section defines a job named deploy and specifies the environment it runs in and **jobs** is the top-level key where all workflow jobs are declared
+This section defines a job named deploy and specifies the environment it runs in, and jobs is the top-level key where all workflow jobs are declared.
 
 ### Checking Out the Repository
 
@@ -213,7 +212,7 @@ steps:
     uses: actions/checkout@v4
 ```
 
-This step pulls the latest version of your repository into the GitHub Actions runner and **steps** defines a sequence of actions executed within the job.
+This step pulls the latest version of your repository into the GitHub Actions runner, and the **steps** define a sequence of actions executed within the job.
 
 ### Setting Up PHP Environment
 
@@ -244,7 +243,7 @@ This step prepares the PHP runtime required to run the Laravel application. At t
 ```
 
 This step deploys the application to the server using rsync over SSH.
-**rsync** transfers only changed files **--exclude** prevents sensitive and environment files from being deleted, files like .env, .htaccess, etc.
+**rsync** transfers only changed files, while **--exclude** prevents sensitive and environment files from being deleted, files like .env, .htaccess, etc.
 
 **path** specifies the local project directory to sync while **remote_*...** values are pulled from GitHub Secrets.
 
@@ -377,7 +376,7 @@ Files **not present in the repo** will be removed on the server.
 
 ## You may need .htaccess file for Laravel application
 
-When you host a Laravel application on shared hosting, by default, the file lists will show when someone visits your domain name. To prevent this and direct users to your application home page, use **.htaccess** file to set the rules.
+When you host a Laravel application on shared hosting, by default, the file lists will show when someone visits your domain name. To prevent this and direct users to your application home page, use the **.htaccess** file to set the rules.
 
 ### Correct Laravel Rewrite Rule
 
@@ -388,7 +387,7 @@ When you host a Laravel application on shared hosting, by default, the file list
 </IfModule>
 ```
 
-Use the rule above inside .htaccess file. It will direct trafic to the public folder of the Laravel application instead of listing the directory contents. The .htaccess file should be in the parent folder of the application.
+Use the rule above inside the .htaccess file. It will direct traffic to the public folder of the Laravel application instead of listing the directory contents. The .htaccess file should be in the parent folder of the application.
 
 ## Problem with npm
 
@@ -410,7 +409,7 @@ Shared hosting can absolutely support professional CI/CD workflows if you design
 
 CI/CD pipelines are about **automation**, not infrastructure based. With the right approach, even shared hosting environments can benefit from modern DevOps workflows.
 
-If you're running Laravel on shared hosting, CI/CD is absolutely achievable and it saves time of having to constantly update your server's files after each changes.
+If you're running Laravel on shared hosting, CI/CD is absolutely achievable, and it saves time from having to constantly update your server's files after each change.
 
 ---
 
