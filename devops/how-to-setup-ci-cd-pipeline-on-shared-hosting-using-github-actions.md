@@ -108,7 +108,7 @@ Shared hosting environments are restrictive by design and functionality, unlike 
 
 SSH is not enabled on Namecheap cPanel by default, and you need to enable it to be able to follow this guide.
 
-From the cPanel, under **Exclusive for Namecheap Customers**, click on **Manage Shell** then you will enable the SSH as shown bellow:
+From the cPanel, under **Exclusive for Namecheap Customers**, click on **Manage Shell** then you will enable the SSH as shown below:
 ![How to enable ssh on Namecheap shared hosting](../images/how-to-enable-ssh-on-namecheap-shared-hosting.png)
 
 You can either access the server terminal from your local machine using SSH or directly from cPanel **Terminal**.
@@ -409,7 +409,9 @@ Shared hosting can absolutely support professional CI/CD workflows if you design
 
 CI/CD pipelines are about **automation**, not infrastructure based. With the right approach, even shared hosting environments can benefit from modern DevOps workflows.
 
-If you're running Laravel on shared hosting, CI/CD is absolutely achievable, and it saves time from having to constantly update your server's files after each change.
+If you're running Laravel on shared hosting, CI/CD is absolutely achievable, and it saves time from having to update your server's files after each change constantly.
+
+After you have followed the above guide, whenever you push your code to the main branch, GitHub Action will automatically deploy your code to your shared host server.
 
 ---
 
