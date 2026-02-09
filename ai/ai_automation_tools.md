@@ -1,6 +1,6 @@
 # Essential AI & Automation Tools for Modern Professionals
 
-![AI and Automation Tools](images/ai-and-automation-tools.png)
+![AI and Automation Tools](../images/ai-and-automation-tools.png)
 
 I registered a course on AI and Automation at [TS Academy](http://tsacademyonline.com/), went through the curriculum and I was amazed at the amount of AI and Automation tools covered in the course.
 
